@@ -1,2 +1,2 @@
 # Aldrich_Portfolio
-All data science portfolio
+All data science portfolio summary
