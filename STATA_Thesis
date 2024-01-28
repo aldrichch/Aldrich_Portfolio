@@ -1,0 +1,89 @@
+egen firm_id = group(GVKEY)
+egen industry_id = group(SIC)
+egen time_id = group(year)
+egen state_id = group(STATE)
+
+winsor2 fracdirafter twfracdirafter iv3ff iv5ff tobinq HHI rd coa roa lev ad findisfirm IO naf adj_corruption, replace cuts (1 99)
+replace IO=1 if IO>1
+drop if lev>1
+
+tabstat fracdirafter twfracdirafter iv3ff iv5ff tobinq HHI ln_at rd coa roa lev ln_kl ad findisfirm IO naf adj_corruption, s(N mean sd min p25 p50 p75 max) long col(stat) f(%9.4f)
+asdoc pwcorr fracdirafter twfracdirafter iv3ff iv5ff tobinq HHI ln_at rd coa roa lev ln_kl ad findisfirm IO naf, star(all) replace
+
+generate Mean_fracdirafter=.
+replace Mean_fracdirafter=1 if fracdirafter>=0.4698
+replace Mean_fracdirafter=0 if fracdirafter<0.4698
+generate Median_fracdirafter=.
+replace Median_fracdirafter=1 if fracdirafter>=0.4444
+replace Median_fracdirafter=0 if fracdirafter<0.4444
+
+ttest iv3ff, by(Median_fracdirafter)
+ttest iv5ff, by(Median_fracdirafter)
+ttest iv3ff, by(Mean_fracdirafter)
+ttest iv5ff, by(Mean_fracdirafter)
+ttest tobinq, by(Mean_fracdirafter)
+ttest HHI, by(Mean_fracdirafter)
+ttest ln_at, by(Mean_fracdirafter)
+ttest rd, by(Mean_fracdirafter)
+ttest coa, by(Mean_fracdirafter)
+ttest roa, by(Mean_fracdirafter)
+ttest lev, by(Mean_fracdirafter)
+ttest ln_kl, by(Mean_fracdirafter)
+ttest ad, by(Mean_fracdirafter)
+ttest findisfirm, by(Mean_fracdirafter)
+ttest IO, by(Mean_fracdirafter)
+ttest naf, by(Mean_fracdirafter)
+
+
+median iv3ff, by(Median_fracdirafter) exact
+median iv5ff, by(Median_fracdirafter) exact
+
+median iv3ff, by(Mean_fracdirafter) exact
+median iv5ff, by(Mean_fracdirafter) exact
+median tobinq, by(Mean_fracdirafter) exact
+median HHI, by(Mean_fracdirafter) exact
+median ln_at, by(Mean_fracdirafter) exact
+median rd, by(Mean_fracdirafter) exact
+median coa, by(Mean_fracdirafter) exact
+median roa, by(Mean_fracdirafter) exact
+median lev, by(Mean_fracdirafter) exact
+median ln_kl, by(Mean_fracdirafter) exact
+median ad, by(Mean_fracdirafter) exact
+median findisfirm, by(Mean_fracdirafter) exact
+median IO, by(Mean_fracdirafter) exact
+
+xtset firm_id time_id
+set matsize 5000
+global ctrllist tobinq HHI ln_at rd coa roa lev ln_kl ad findisfirm IO naf Corruption
+
+eststo model1: reg f.iv3ff fracdirafter i.year i.SIC,vce(cluster GVKEY)
+eststo model3: reg f.iv3ff twfracdirafter i.year i.SIC,vce(cluster GVKEY)
+eststo model5: reg f.iv5ff fracdirafter i.year i.SIC,vce(cluster GVKEY)
+eststo model7: reg f.iv5ff twfracdirafter i.year i.SIC,vce(cluster GVKEY)
+esttab * using  testloanspread.csv, replace collabels(none) cells(b(star fmt(4)) t(par fmt(2))) legend label varlabels(_cons Constant) stats(r2_a N, fmt(4 0) label("Adj. R-squared" "Obs.")) star(* 0.10 ** 0.05 *** 0.01)
+
+eststo model1: reg f.iv3ff fracdirafter tobinq HHI ln_at rd coa roa lev ln_kl ad findisfirm naf IO i.year i.SIC,vce(cluster GVKEY)
+eststo model3: reg f.iv3ff twfracdirafter tobinq HHI ln_at rd coa roa lev ln_kl ad findisfirm naf i.year IO i.SIC,vce(cluster GVKEY)
+eststo model5: reg f.iv5ff fracdirafter tobinq HHI ln_at rd coa roa lev ln_kl ad findisfirm naf IO i.year i.SIC,vce(cluster GVKEY)
+eststo model7: reg f.iv5ff twfracdirafter tobinq HHI ln_at rd coa roa lev ln_kl ad findisfirm naf IO i.year i.SIC,vce(cluster GVKEY)
+esttab * using  testloan.csv, replace collabels(none) cells(b(star fmt(4)) t(par fmt(2))) legend label varlabels(_cons Constant) stats(r2_a N, fmt(4 0) label("Adj. R-squared" "Obs.")) star(* 0.10 ** 0.05 *** 0.01)
+
+eststo model1: reg f.iv3ff fracdirafter tobinq HHI ln_at rd coa roa lev ln_kl ad findisfirm naf IO i.year i.SIC i.state_id,vce(cluster GVKEY)
+eststo model3: reg f.iv3ff twfracdirafter tobinq HHI ln_at rd coa roa lev ln_kl ad findisfirm naf IO i.year i.SIC i.state_id,vce(cluster GVKEY)
+eststo model5: reg f.iv5ff fracdirafter tobinq HHI ln_at rd coa roa lev ln_kl ad findisfirm naf IO i.year i.SIC i.state_id,vce(cluster GVKEY)
+eststo model7: reg f.iv5ff twfracdirafter tobinq HHI ln_at rd coa roa lev ln_kl ad findisfirm naf IO i.year i.SIC i.state_id,vce(cluster GVKEY)
+esttab * using  testloanstate.csv, replace collabels(none) cells(b(star fmt(4)) t(par fmt(2))) legend label varlabels(_cons Constant) stats(r2_a N, fmt(4 0) label("Adj. R-squared" "Obs.")) star(* 0.10 ** 0.05 *** 0.01)
+
+
+
+generate D_adj_corruption=.
+replace D_adj_corruption =1 if adj_corruption>=0.002967834
+replace D_adj_corruption =0 if adj_corruption<0.002967834
+
+gen fracdirafter_Corruption= fracdirafter*D_adj_corruption
+
+eststo model1: reg f.iv3ff fracdirafter fracdirafter_Corruption D_adj_corruption tobinq HHI rd coa roa lev ln_at ln_kl ad findisfirm naf IO i.year i.SIC,vce(cluster GVKEY)
+eststo model3: reg f.iv3ff twfracdirafter fracdirafter_Corruption D_adj_corruption tobinq HHI  rd coa roa lev ln_at ln_kl ad findisfirm naf i.year IO i.SIC,vce(cluster GVKEY)
+eststo model5: reg f.iv5ff fracdirafter fracdirafter_Corruption D_adj_corruption tobinq HHI rd coa roa lev ln_at ln_kl ad findisfirm naf IO i.year i.SIC,vce(cluster GVKEY)
+eststo model7: reg f.iv5ff twfracdirafter fracdirafter_Corruption D_adj_corruption tobinq HHI rd coa roa lev ln_at ln_kl ad findisfirm naf IO i.year i.SIC,vce(cluster GVKEY)
+esttab * using  moderatingfix.csv, replace collabels(none) cells(b(star fmt(4)) t(par fmt(2))) legend label varlabels(_cons Constant) stats(r2_a N, fmt(4 0) label("Adj. R-squared" "Obs.")) star(* 0.10 ** 0.05 *** 0.01)
